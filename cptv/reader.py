@@ -299,14 +299,22 @@ class CPTVReader:
             pass
             # source = np.append(source, np.zeros(1))  # protect against overrun
         # (lookup_high, lookup_low, lookup_bit) = self._fetch_aux(packed_bit_width)
-        for i in range(len(s) - 1):
+        z = 1
+        # for i in range(len(s) - 1):
+        i = 0
+        while i < len(s):
             while nbits < bitw:
                 bits |= source[i + 4] << (24 - nbits)
                 nbits += 8
                 i += 1
             # print(bits)
-            s[i] = self.inverse_twos_comp(bits >> (32 - bitw) & 0xFFFF, bitw)
+            s[z] = self.inverse_twos_comp(bits >> (32 - bitw) & 0xFFFF, bitw)
+            # print("first ", nbits, "is", s[z], z)
+            z += 1
+            # if z >= 3:
+            #     return
             bits = (bits << bitw) & 0xFFFFFFFF
+
             # print(s[i])
             nbits -= bitw
         print("s20", s[0:20])
