@@ -206,7 +206,7 @@ class CPTVReader:
                 )
             else:
                 packed_delta = np.fromfile(self.s, np.dtype("B"), frame_size)
-
+            print(packed_delta.dtype)
             pix = self._decompress_frame(linear_pix, packed_delta, bit_width)
 
             if self.version >= 2:
@@ -284,34 +284,44 @@ class CPTVReader:
         return s.read(length)
 
     def _decompress_frame(self, current_frame, source, packed_bit_width):
+        print(source.dtype)
         s = np.empty(self.x_resolution * self.y_resolution, dtype="h")
         s[0] = struct.unpack("<i", source[0:4])[0]  # starting value, signed
-
+        print(len(source))
         if packed_bit_width > 16:
             raise IOError("Higher than 16bit thermal imaging not supported")
-
+        nbits = 0
+        bits = 0
+        bitw = packed_bit_width
         if packed_bit_width == 8:
             s[1:] = source[4:].astype("b")
         else:
-            source = np.append(source, np.zeros(1))  # protect against overrun
-
-            (lookup_high, lookup_low, lookup_bit) = self._fetch_aux(packed_bit_width)
-
-            s[1:] = (
-                256 * source[lookup_high] + source[lookup_low]
-            )  # fetch nearby 16 bits
-
-            # twos complement and shift down into range
-            mask = (1 << packed_bit_width) - 1
-            max_packed_value = 1 << (packed_bit_width - 1)
-            s[1:] = (
-                ((s[1:] >> lookup_bit) + max_packed_value) & mask
-            ) - max_packed_value
-        # TODO: Fast path for 12bit and 16bit
-
+            pass
+            # source = np.append(source, np.zeros(1))  # protect against overrun
+        # (lookup_high, lookup_low, lookup_bit) = self._fetch_aux(packed_bit_width)
+        for i in range(len(s) - 1):
+            while nbits < bitw:
+                bits |= source[i + 4] << (24 - nbits)
+                nbits += 8
+                i += 1
+            # print(bits)
+            s[i] = self.inverse_twos_comp(bits >> (32 - bitw) & 0xFFFF, bitw)
+            bits = (bits << bitw) & 0xFFFFFFFF
+            # print(s[i])
+            nbits -= bitw
+        print("s20", s[0:20])
         current_frame += np.cumsum(s)  # expand deltas and delta-deltas
         pix_signed = current_frame[self._get_snake()]  # remove snake ordering
         return pix_signed.astype("H")  # cast unsigned
+
+    def inverse_twos_comp(self, v, width):
+        """Convert a two's complement value of a specific bit width to a
+        full width integer.
+
+        The inverse of twos_comp() in writer.pyx.
+        """
+        mask = 1 << (width - 1)
+        return -(v & mask) + (v & ~mask)
 
     def _get_snake(self):
         if not hasattr(self, "snake_cache"):

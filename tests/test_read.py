@@ -44,34 +44,13 @@ def test_read_v1():
 
 
 def test_read_v2():
-    filename = str(data_dir / "v2.cptv")
+    filename = "/home/zaza/TheCacophonyProject/classifier-data/cptv-files/lepton35-maria-rewrite.cptv"
     with open(filename, "rb") as f:
         r = CPTVReader(f)
-        assert r.version == 2
-        assert r.device_id == 44
-        assert r.device_name == b"nz99"
-        assert r.timestamp == datetime(2018, 9, 6, 9, 21, 25, 774768, timezone.utc)
-        assert r.x_resolution == 160
-        assert r.y_resolution == 120
-        assert r.preview_secs == 1
-        assert r.motion_config == b"motion"
-        assert r.latitude == 0
-        assert r.longitude == 0
-        assert r.loc_timestamp == 0
-
-        assert r.altitude == 0
-        assert r.fps == 0
-        assert r.model is None
-        assert r.brand is None
-        assert r.firmware is None
-        assert r.camera_serial == 0
         count = 0
         for frame in r:
-            count += 1
-            assert frame.time_on is not None
-            assert frame.last_ffc_time is not None
-            assert frame.pix.min() > 2500
-            assert frame.pix.max() < 3200
+            print(frame.pix[0])
+
         assert count == 100
 
 
